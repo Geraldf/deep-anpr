@@ -111,10 +111,11 @@ for yaml_file in yaml_files:
 
     crop = crop_rect(img, x, y , width, height)
 
-    visible = 0 if yaml_obj['plate_number_gt'] == 0 else 1
+    visible = "0" if yaml_obj['plate_number_gt'] == 0 else "1"
+    if visible == "0":
+        plate = "AAA000"
+    else:
+        plate = yaml_obj['plate_number_gt']
 
-    if visible == 0:
-        continue
-
-    out_crop_path = os.path.join(options.out_dir, "00000000_{}_{}.png".format(yaml_obj['plate_number_gt'], visible))
+    out_crop_path = os.path.join(options.out_dir, "00000000_{}_{}.png".format(plate, visible))
     cv2.imwrite(out_crop_path, crop * 255.)

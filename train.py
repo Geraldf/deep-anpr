@@ -32,11 +32,8 @@ __all__ = (
 )
 
 
-import functools
 import glob
 import itertools
-import multiprocessing
-import random
 import sys
 import time
 import os
@@ -61,13 +58,12 @@ def code_to_vec(p, code):
     return numpy.concatenate([[1. if p else 0], c.flatten()])
 
 
-def read_data(img_glob):
+def read_validation_data(img_glob):
     for fname in sorted(glob.glob(img_glob)):
         im = cv2.imread(fname)[:, :, 0].astype(numpy.float32) / 255.
         code = fname.split(os.sep)[1][9:15]
         p = fname.split(os.sep)[1][16] == '1'
         yield im, code_to_vec(p, code)
-
 
 def unzip(b):
     xs, ys = list(zip(*b))
@@ -87,32 +83,6 @@ def batch(it, batch_size):
         yield out
 
 
-def mpgen(f):
-    def main(q, args, kwargs):
-        try:
-            for item in f(*args, **kwargs):
-                q.put(item)
-        finally:
-            q.close()
-
-    @functools.wraps(f)
-    def wrapped(*args, **kwargs):
-        q = multiprocessing.Queue(3)
-        proc = multiprocessing.Process(target=main,
-                                       args=(q, args, kwargs))
-        proc.start()
-        try:
-            while True:
-                item = q.get()
-                yield item
-        finally:
-            proc.terminate()
-            proc.join()
-
-    return wrapped
-
-
-#@mpgen
 def read_batches(batch_size):
     g = gen.generate_ims()
     def gen_vecs():
@@ -228,7 +198,7 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
         if initial_weights is not None:
             sess.run(assign_ops)
 
-        test_xs, test_ys = unzip(list(read_data(os.path.join("test","*.png"))))
+        test_xs, test_ys = unzip(list(read_validation_data(os.path.join("validation","*.png"))))
 
         try:
             last_batch_idx = 0
