@@ -237,9 +237,10 @@ def generate_im(plate_data, num_bg_images):
 
     out = (cv2.resize(out, (OUTPUT_SHAPE[1], OUTPUT_SHAPE[0]))) / 255.
 
-    # Add noise
-    #out += numpy.random.normal(scale=0.05, size=out.shape)
-    #out = numpy.clip(out, 0., 1.)
+    # Add noise... sometimes
+    if numpy.random.random() < 0.5:
+        out += numpy.random.normal(scale=0.05, size=out.shape)
+        out = numpy.clip(out, 0., 1.)
 
     return out, code, not out_of_bounds
 
