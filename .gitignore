@@ -3,5 +3,6 @@
 fonts/*
 test/*
 bgs/*
-weights.npz
+weights*.npz
 .DS_Store
+*.jpg

@@ -118,16 +118,16 @@ def get_training_model():
     conv_layer_flat = tf.reshape(conv_layer, [-1, 32 * 8 * 128])
     h_fc1 = tf.nn.relu(tf.matmul(conv_layer_flat, W_fc1) + b_fc1)
 
+    keep_prob = tf.placeholder(tf.float32)
+    h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+
     # Output layer
     W_fc2 = weight_variable([2048, 1 + common.PLATE_LEN * len(common.CHARS)])
     b_fc2 = bias_variable([1 + common.PLATE_LEN * len(common.CHARS)])
 
-    keep_prob = 0.5 #tf.placeholder(tf.float32)
-    h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
-
     y = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
-    return (x, y, conv_vars + [W_fc1, b_fc1, W_fc2, b_fc2])
+    return (x, y, conv_vars + [W_fc1, b_fc1, W_fc2, b_fc2], keep_prob)
 
 
 def get_detect_model():
@@ -154,4 +154,3 @@ def get_detect_model():
     h_conv2 = conv2d(h_conv1, W_conv2) + b_fc2
 
     return (x, h_conv2, conv_vars + [W_fc1, b_fc1, W_fc2, b_fc2])
-

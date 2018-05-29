@@ -34,6 +34,7 @@ __all__ = (
 
 import glob
 import itertools
+import multiprocessing
 import sys
 import time
 import os
@@ -58,12 +59,17 @@ def code_to_vec(p, code):
     return numpy.concatenate([[1. if p else 0], c.flatten()])
 
 
-def read_validation_data(img_glob):
+def vec_to_code(v):
+    return "".join(common.CHARS[i] for i in v)
+
+
+def read_data(img_glob):
     for fname in sorted(glob.glob(img_glob)):
         im = cv2.imread(fname)[:, :, 0].astype(numpy.float32) / 255.
         code = fname.split(os.sep)[1][9:15]
         p = fname.split(os.sep)[1][16] == '1'
         yield im, code_to_vec(p, code)
+
 
 def unzip(b):
     xs, ys = list(zip(*b))
@@ -72,18 +78,38 @@ def unzip(b):
     return xs, ys
 
 
-def batch(it, batch_size):
-    out = []
-    for x in it:
-        out.append(x)
-        if len(out) == batch_size:
-            yield out
-            out = []
-    if out:
-        yield out
+def gen_vecs(q, batch_size):
+    print("Gen vec")
+
+    g = gen.generate_ims()
+
+    def f():
+        for im, c, p in itertools.islice(g, batch_size):
+            yield im, code_to_vec(p, c)
+    try:
+        while True:
+            q.put(unzip(f()))
+    finally:
+        q.close()
 
 
 def read_batches(batch_size):
+    print("Read batches")
+    q = multiprocessing.Queue(3)
+
+    proc = multiprocessing.Process(target=gen_vecs, args=(q, batch_size))
+    proc.start()
+
+    try:
+        while True:
+            item = q.get()
+            yield item
+    finally:
+        proc.terminate()
+        proc.join()
+
+
+def read_batches2(batch_size):
     g = gen.generate_ims()
     def gen_vecs():
         for im, c, p in itertools.islice(g, batch_size):
@@ -91,7 +117,6 @@ def read_batches(batch_size):
 
     while True:
         yield unzip(gen_vecs())
-
 
 def get_loss(y, y_):
     # Calculate the loss from digits being incorrect.  Don't count loss from
@@ -113,7 +138,7 @@ def get_loss(y, y_):
     return digits_loss, presence_loss, digits_loss + presence_loss
 
 
-def train(learn_rate, report_steps, batch_size, initial_weights=None):
+def train(learn_rate, report_steps, batch_size, initial_weights=None, max_steps=0):
     """
     Train the network.
 
@@ -137,11 +162,12 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
         The learned network weights.
 
     """
-    x, y, params = model.get_training_model()
+    x, y, params, keep_prob = model.get_training_model()
 
     y_ = tf.placeholder(tf.float32, [None, common.PLATE_LEN * len(common.CHARS) + 1])
 
     digits_loss, presence_loss, loss = get_loss(y, y_)
+    #train_step = tf.train.GradientDescentOptimizer(learn_rate).minimize(loss)
     train_step = tf.train.AdamOptimizer(learn_rate).minimize(loss)
 
     best = tf.argmax(tf.reshape(y[:, 1:], [-1, common.PLATE_LEN, len(common.CHARS)]), 2)
@@ -153,9 +179,6 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
 
     init = tf.global_variables_initializer()
 
-    def vec_to_plate(v):
-        return "".join(common.CHARS[i] for i in v)
-
     def do_report():
         r = sess.run([best,
                       correct,
@@ -164,16 +187,18 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
                       digits_loss,
                       presence_loss,
                       loss],
-                     feed_dict={x: test_xs, y_: test_ys})
+                     feed_dict={x: test_xs, y_: test_ys, keep_prob: 1.0})
+
         num_correct = numpy.sum(
                         numpy.logical_or(
                             numpy.all(r[0] == r[1], axis=1),
                             numpy.logical_and(r[2] < 0.5,
                                               r[3] < 0.5)))
+
         r_short = (r[0][:190], r[1][:190], r[2][:190], r[3][:190])
         for b, c, pb, pc in zip(*r_short):
-            print("{} {} <-> {} {}".format(vec_to_plate(c), pc,
-                                           vec_to_plate(b), float(pb)))
+            print("{} {} <-> {} {}".format(vec_to_code(c), pc,
+                                           vec_to_code(b), float(pb)))
         num_p_correct = numpy.sum(r[2] == r[3])
 
         print ("B{:3d} {:2.02f}% {:02.02f}% loss: {} (digits: {}, presence: {}) |{}|".format(
@@ -186,27 +211,24 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
             "".join("X "[numpy.array_equal(b, c) or (not pb and not pc)]
                                            for b, c, pb, pc in zip(*r_short))))
 
-    def do_batch():
-        sess.run(train_step,
-                 feed_dict={x: batch_xs, y_: batch_ys})
-        if batch_idx % report_steps == 0:
-            do_report()
-
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.95)
+    test_xs, test_ys = unzip(list(read_data(os.path.join("test","*.png")))[:batch_size])
+    #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.95)
+    gpu_options = tf.GPUOptions(allow_growth=True)
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
         sess.run(init)
         if initial_weights is not None:
             sess.run(assign_ops)
 
-        test_xs, test_ys = unzip(list(read_validation_data(os.path.join("validation","*.png"))))
-
         try:
             last_batch_idx = 0
             last_batch_time = time.time()
-            batch_iter = enumerate(read_batches(batch_size))
+            batch_iter = enumerate(read_batches2(batch_size))
             for batch_idx, (batch_xs, batch_ys) in batch_iter:
-                do_batch()
+                sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys, keep_prob: 0.5})
+
                 if batch_idx % report_steps == 0:
+                    do_report()
+
                     batch_time = time.time()
                     if last_batch_idx != batch_idx:
                         print("time for {} batches {}".format(batch_size,
@@ -214,6 +236,8 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
                                             (last_batch_idx - batch_idx)))
                         last_batch_idx = batch_idx
                         last_batch_time = batch_time
+                if max_steps != 0 and batch_idx >= max_steps:
+                    raise KeyboardInterrupt
 
         except KeyboardInterrupt:
             last_weights = [p.eval() for p in params]
@@ -229,8 +253,10 @@ if __name__ == "__main__":
     else:
         initial_weights = None
 
-    train(learn_rate=0.001,
-          report_steps=20,
-          batch_size=50,
-          initial_weights=initial_weights)
+    train(learn_rate=1e-4,
+          report_steps=500,
+          batch_size=100,
+          initial_weights=initial_weights,
+          max_steps=500000)
+
 
