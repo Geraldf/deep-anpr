@@ -130,20 +130,23 @@ def make_affine_transform(from_shape, to_shape,
     return M, out_of_bounds
 
 
-banned_codes = [
-    "APA", "ARG", "ASS", "BAJ", "BSS", "CUC", "CUK", "DUM", "ETA", "ETT", "FAG", "FAN", "FEG",
-    "FEL", "FEM", "FES", "FET", "FNL", "FUC", "FUK", "FUL", "GAM", "GAY", "GEJ", "GEY", "GHB",
-    "GUD", "GYN", "HAT", "HBT", "HKH", "HOR", "HOT", "KGB", "KKK", "KUC", "KUF", "KUG", "KUK",
-    "KYK", "LAM", "LAT", "LEM", "LOJ", "LSD" "LUS", "MAD", "MAO", "MEN", "MES", "MLB", "MUS",
-    "NAZ", "NRP" "NSF", "NYP", "OND", "OOO", "ORM", "PAJ", "PKK", "PLO", "PMS", "PUB", "RAP",
-    "RAS", "ROM", "RPS", "RUS", "SEG", "SEX", "SJU", "SOS", "SPY", "SUG", "SUP", "SUR", "TBC",
-    "TOA", "TOK", "TRE", "TYP", "UFO", "USA", "WAM", "WAR", "WWW", "XTC", "XTZ", "XXL", "XXX",
-    "ZEX", "ZOG", "ZPY", "ZUG", "ZUP", "ZOO"
-]
+banned_combinations = {
+    None: [],
+    "se": [
+        "APA", "ARG", "ASS", "BAJ", "BSS", "CUC", "CUK", "DUM", "ETA", "ETT", "FAG", "FAN", "FEG",
+        "FEL", "FEM", "FES", "FET", "FNL", "FUC", "FUK", "FUL", "GAM", "GAY", "GEJ", "GEY", "GHB",
+        "GUD", "GYN", "HAT", "HBT", "HKH", "HOR", "HOT", "KGB", "KKK", "KUC", "KUF", "KUG", "KUK",
+        "KYK", "LAM", "LAT", "LEM", "LOJ", "LSD" "LUS", "MAD", "MAO", "MEN", "MES", "MLB", "MUS",
+        "NAZ", "NRP" "NSF", "NYP", "OND", "OOO", "ORM", "PAJ", "PKK", "PLO", "PMS", "PUB", "RAP",
+        "RAS", "ROM", "RPS", "RUS", "SEG", "SEX", "SJU", "SOS", "SPY", "SUG", "SUP", "SUR", "TBC",
+        "TOA", "TOK", "TRE", "TYP", "UFO", "USA", "WAM", "WAR", "WWW", "XTC", "XTZ", "XXL", "XXX",
+        "ZEX", "ZOG", "ZPY", "ZUG", "ZUP", "ZOO"
+    ]
+}
 
-def generate_code():
+def generate_code(country=None):
     code = None
-    while not code or code[0:3] in banned_codes:
+    while not code or any(bad in code for bad in banned_combinations[country]):
         code = "{}{}{} {}{}{}".format(
         random.choice(common.LETTERS),
         random.choice(common.LETTERS),
@@ -234,8 +237,9 @@ def generate_im(plate_data, num_bg_images):
 
     out = (cv2.resize(out, (OUTPUT_SHAPE[1], OUTPUT_SHAPE[0]))) / 255.
 
-    out += numpy.random.normal(scale=0.05, size=out.shape)
-    out = numpy.clip(out, 0., 1.)
+    # Add noise
+    #out += numpy.random.normal(scale=0.05, size=out.shape)
+    #out = numpy.clip(out, 0., 1.)
 
     return out, code, not out_of_bounds
 
