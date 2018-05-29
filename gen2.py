@@ -86,14 +86,18 @@ def make_affine_transform(from_shape, to_shape,
                           translation_variation=1.0):
     out_of_bounds = False
 
+
     from_size = numpy.array([[from_shape[1], from_shape[0]]]).T
     to_size = numpy.array([[to_shape[1], to_shape[0]]]).T
 
-    scale = random.uniform((min_scale + max_scale) * 0.5 -
-                           (max_scale - min_scale) * 0.5 * scale_variation,
-                           (min_scale + max_scale) * 0.5 +
-                           (max_scale - min_scale) * 0.5 * scale_variation)
+    #scale = random.uniform((min_scale + max_scale) * 0.5 -
+    #                       (max_scale - min_scale) * 0.5 * scale_variation,
+    #                       (min_scale + max_scale) * 0.5 +
+    #                       (max_scale - min_scale) * 0.5 * scale_variation)
+
+    scale = random.uniform(min_scale, max_scale)
     if scale > max_scale or scale < min_scale:
+        print("Out of scale")
         out_of_bounds = True
 
     roll = random.uniform(-0.5, 0.5) * rotation_variation
@@ -116,7 +120,8 @@ def make_affine_transform(from_shape, to_shape,
     # the output shape's bounds.
     trans = (numpy.random.random((2,1)) - 0.5) * translation_variation
     trans = ((2.0 * trans) ** 5.0) / 2.0
-    if numpy.any(trans < -0.80) or numpy.any(trans > 0.80):
+    if (scale <= 0.8 and (numpy.any(trans < -0.9) or numpy.any(trans > 0.9))) or (scale > 0.8 and (numpy.any(trans < -1.1) or numpy.any(trans > 1.1))):
+        print("Out of trans", scale)
         out_of_bounds = True
     trans = (to_size - skewed_size * scale) * trans
 
@@ -221,7 +226,7 @@ def generate_im(plate_data, num_bg_images):
     M, out_of_bounds = make_affine_transform(
                             from_shape=(plate.shape[0], plate.shape[1]),
                             to_shape=bg.shape,
-                            min_scale=0.6,
+                            min_scale=0.4,
                             max_scale=1.1,
                             rotation_variation=0.9,
                             scale_variation=1.2,
