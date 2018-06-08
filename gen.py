@@ -47,6 +47,7 @@ from PIL import ImageDraw
 from PIL import ImageFont
 
 import common
+from random import randint
 
 FONT_DIR = "./fonts"
 FONT_HEIGHT = 32  # Pixel size to which the chars are resized
@@ -160,13 +161,24 @@ def make_affine_transform(from_shape, to_shape,
 
 
 def generate_code():
-    return "{}{}{} {}{}{}".format(
+    # German Numberplate Generation
+    number_of_first_letters = randint(1,3)
+    number_of_second_letters = randint(1,2)
+    number_of_numbers = randint(1,4)
+    code = '!'
+    code = code + '{}'*number_of_first_letters.format(
         random.choice(common.LETTERS),
         random.choice(common.LETTERS),
-        random.choice(common.LETTERS),
-        random.choice(common.DIGITS),
-        random.choice(common.DIGITS),
-        random.choice(common.DIGITS))
+        random.choice(common.LETTERS))
+
+    return code
+    # return "{}{}{} {}{}{}".format(
+    #     random.choice(common.LETTERS),
+    #     random.choice(common.LETTERS),
+    #     random.choice(common.LETTERS),
+    #     random.choice(common.DIGITS),
+    #     random.choice(common.DIGITS),
+    #     random.choice(common.DIGITS))
 
 
 def rounded_rect(shape, radius):
