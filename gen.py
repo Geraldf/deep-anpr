@@ -36,6 +36,7 @@ __all__ = (
 import itertools
 import math
 import os
+import shutil
 import random
 import sys
 
@@ -49,12 +50,14 @@ from PIL import ImageFont
 import common
 from random import randint
 
+import town
+
 FONT_DIR = "./fonts"
 FONT_HEIGHT = 32  # Pixel size to which the chars are resized
 
 OUTPUT_SHAPE = (64, 128)
 
-CHARS = common.CHARS + " "
+CHARS = common.CHARS + " " 
 
 
 def make_char_ims(font_path, output_height):
@@ -162,14 +165,21 @@ def make_affine_transform(from_shape, to_shape,
 
 def generate_code():
     # German Numberplate Generation
-    number_of_first_letters = randint(1,3)
+    
     number_of_second_letters = randint(1,2)
     number_of_numbers = randint(1,4)
-    code = '!'
-    code = code + '{}'*number_of_first_letters.format(
-        random.choice(common.LETTERS),
-        random.choice(common.LETTERS),
-        random.choice(common.LETTERS))
+    my_args = ["!"]
+    my_args.append(random.choice(town.town))
+    code = "".join(my_args)
+    my_args = [":"]
+    for i in range (number_of_second_letters): 
+        my_args.append(random.choice(common.LETTERS))
+    code = code + "".join(my_args)
+    my_args = [" "]
+    for i in range (number_of_second_letters): 
+        my_args.append(random.choice(common.DIGITS))
+    code = (code + "".join(my_args)).upper()
+    
 
     return code
     # return "{}{}{} {}{}{}".format(
@@ -298,11 +308,13 @@ def generate_ims():
 
 
 if __name__ == "__main__":
+   
+    shutil.rmtree("test")
     os.mkdir("test")
     im_gen = itertools.islice(generate_ims(), int(sys.argv[1]))
     for img_idx, (im, c, p) in enumerate(im_gen):
-        fname = "test/{:08d}_{}_{}.png".format(img_idx, c,
-                                               "1" if p else "0")
+        fname = "test/{:08d}_{}_{}.png".format(img_idx, (c.split("!"))[1].split("_")[0],"1" if p else "0")
+        #fname = (fname.split("!"))[1].split("_")[0]                            
         print(fname)
         cv2.imwrite(fname, im * 255.)
 

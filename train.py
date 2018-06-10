@@ -50,6 +50,7 @@ import gen
 import model
 
 
+
 def code_to_vec(p, code):
     def char_to_vec(c):
         y = numpy.zeros((len(common.CHARS),))
@@ -64,8 +65,8 @@ def code_to_vec(p, code):
 def read_data(img_glob):
     for fname in sorted(glob.glob(img_glob)):
         im = cv2.imread(fname)[:, :, 0].astype(numpy.float32) / 255.
-        code = fname.split(os.sep)[1][9:15]
-        p = fname.split(os.sep)[1][16] == '1'
+        code = fname.split(os.sep)[1].split("_")[1]
+        p = fname.split(os.sep)[1].split("_")[2][0:1] == '1'
         yield im, code_to_vec(p, code)
 
 

@@ -36,9 +36,10 @@ import numpy
 
 DIGITS = "0123456789"
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-CHARS = LETTERS + DIGITS
+SPECIAL = "!:ÄÖÜüäö"
+CHARS = LETTERS + DIGITS + SPECIAL
 
-PLATE_LEN=6
+PLATE_LEN=11
 
 def softmax(a):
     exps = numpy.exp(a.astype(numpy.float64))
