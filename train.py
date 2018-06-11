@@ -63,10 +63,13 @@ def code_to_vec(p, code):
 
 
 def read_data(img_glob):
+    file_list = eval(open('plates.txt', 'r').read())
     for fname in sorted(glob.glob(img_glob)):
         im = cv2.imread(fname)[:, :, 0].astype(numpy.float32) / 255.
-        code = fname.split(os.sep)[1].split("_")[1]
-        p = fname.split(os.sep)[1].split("_")[2][0:1] == '1'
+        #code = fname.split(os.sep)[1].split("_")[1].replace("-",":")
+        code = file_list.get(int(fname.split(os.sep)[1].split("_")[0]))
+        print (code)
+        p = fname.split(os.sep)[1].split("_")[1][0:1] == '1'
         yield im, code_to_vec(p, code)
 
 
@@ -218,8 +221,8 @@ def train(learn_rate, report_steps, batch_size, initial_weights=None):
                                            for b, c, pb, pc in zip(*r_short))))
 
     def do_batch():
-        sess.run(train_step,
-                 feed_dict={x: batch_xs, y_: batch_ys})
+        feed_dict={x: batch_xs, y_: batch_ys}
+        sess.run(train_step,feed_dict)
         if batch_idx % report_steps == 0:
             do_report()
 
@@ -262,6 +265,6 @@ if __name__ == "__main__":
 
     train(learn_rate=0.001,
           report_steps=20,
-          batch_size=50,
+          batch_size=1,
           initial_weights=initial_weights)
 

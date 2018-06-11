@@ -311,10 +311,17 @@ if __name__ == "__main__":
    
     shutil.rmtree("test")
     os.mkdir("test")
+    os.remove('plates.txt')
     im_gen = itertools.islice(generate_ims(), int(sys.argv[1]))
+    file_list = dict()
     for img_idx, (im, c, p) in enumerate(im_gen):
-        fname = "test/{:08d}_{}_{}.png".format(img_idx, (c.split("!"))[1].split("_")[0],"1" if p else "0")
-        #fname = (fname.split("!"))[1].split("_")[0]                            
+        file_list.update({img_idx:(c.split("!"))[1].split("_")[0]})
+        #fname = "test/{:08d}_{}_{}.png".format(img_idx, (c.split("!"))[1].split("_")[0],"1" if p else "0")
+        fname = "test/{:08d}_{}.png".format(img_idx,"1" if p else "0")
+        fname = fname.replace(":","-")                        
         print(fname)
         cv2.imwrite(fname, im * 255.)
 
+    target = open('plates.txt', 'a')
+    target.write(str(file_list))
+    target.close()
