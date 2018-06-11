@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*- 
 town=["A",
 "AA",
 "AB",
